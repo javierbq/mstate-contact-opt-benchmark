@@ -1,0 +1,8 @@
+target: daniel_small_ferredoxin/00001.pdb
+decoys: daniel_small_ferredoxin/fold_abinitio_boinc_sfr_v02__147699.silent
+options:
+  - "-job_name" :   "test"
+  - "-n_iter"    :   3
+  - "-n_decoys" :   10
+  - "-kt"       :   1000
+  - "-bootstrap"
