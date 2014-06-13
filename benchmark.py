@@ -49,17 +49,22 @@ parser.add_argument(
     default=('havic', 6379),
     help='Store progress in a redis server.'
 )
-
 parser.add_argument(
-    '-reset_test_counter',
-    action='store_true',
-    help="Reset test counter."
+    '-cpu_slots',
+    default=10,
+    help='max cpu slots to be used in the head machine.'
 )
-parser.add_argument(
-    '-reset_benchmark_counter',
-    action='store_true',
-    help="Reset benchmark counter."
-)
+# not implemented yet
+#parser.add_argument(
+#    '-reset_test_counter',
+#    action='store_true',
+#    help="Reset test counter."
+#)
+#parser.add_argument(
+#    '-reset_benchmark_counter',
+#    action='store_true',
+#    help="Reset benchmark counter."
+#)
 args = parser.parse_args()
 
 formatter = logging.Formatter(
@@ -76,6 +81,8 @@ logger.addHandler(ch)
 logger_utils.addHandler(ch)
 
 redis_server = redis.Redis(host='havic', port=6379)
+
+redis_server.set('slots:' + args.head, args.cpu_slots)
 
 home = os.path.expanduser('~')
 if os.path.exists(os.path.abspath('%s/.virtualenvs/%s' % (home, args.enviroment))):
@@ -99,12 +106,9 @@ session.login(args.head, getuser())
 if os.path.exists('%s/.bashrc' % home):
     logger.info('sourcing ~/.bashrc')
     session.sendline('source %s/.bashrc' % home)
-    session.prompt()
 session.sendline('source %s/bin/activate' % path_to_enviroment)
-session.prompt()
 session.sendline('cd %s' % base_dir)
 session.prompt()
-
 if args.test:
     if args.reset_test_counter:
         redis_server.set('test_counter', 0)
@@ -123,7 +127,7 @@ if args.test:
     logger.debug('Making a copy of the test directory')
     shutil.copytree('test', test_dir)
     run_target(test_dir, test_id, input_dir, args.redis_host_port,
-               session, dummy_run=args.dummy_run)
+               session,path_to_enviroment, dummy_run=args.dummy_run)
 
 
 else:
@@ -158,7 +162,7 @@ else:
         logger.debug('target dir: %s' % target_dir)
 
         run_target(target_dir, bench_id, input_dir, args.redis_host_port,
-                   session, dummy_run=args.dummy_run)
+                   session, path_to_enviroment, dummy_run=args.dummy_run)
 
         logger.info('------------- Target Ready -------------')
         c += 1
