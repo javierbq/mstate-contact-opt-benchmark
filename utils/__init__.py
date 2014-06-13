@@ -26,7 +26,7 @@ def run_target(target_dir, benchid, input_dir, redis_host_port, session, env_pat
     target = os.path.basename(target_dir)
     logger.info('Running target %s' % target)
     session.sendline('cd %s' % target_dir)
-    cmd = get_cmd_from_yaml('%s/target.yaml' % target_dir, input_dir) + ' -redis_host_port %s %d -job_name %s' % (redis_host_port[0], redis_host_port[1], '%s_%s' % (benchid, target))
+    cmd = get_cmd_from_yaml('%s/target.yaml' % target_dir, input_dir) + ' -redis_host_port %s %d -use_slots -job_name %s' % (redis_host_port[0], redis_host_port[1], '%s_%s' % (benchid, target))
     logger.debug('cmd: %s' % cmd)
     if dummy_run:
       logger.info('dummy run! skipping execution.')
