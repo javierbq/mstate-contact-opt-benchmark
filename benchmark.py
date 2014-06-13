@@ -54,17 +54,16 @@ parser.add_argument(
     default=10,
     help='max cpu slots to be used in the head machine.'
 )
-# not implemented yet
-#parser.add_argument(
-#    '-reset_test_counter',
-#    action='store_true',
-#    help="Reset test counter."
-#)
-#parser.add_argument(
-#    '-reset_benchmark_counter',
-#    action='store_true',
-#    help="Reset benchmark counter."
-#)
+parser.add_argument(
+    '-reset_test_counter',
+    action='store_true',
+    help="Reset test counter."
+)
+parser.add_argument(
+    '-reset_benchmark_counter',
+    action='store_true',
+    help="Reset benchmark counter."
+)
 args = parser.parse_args()
 
 formatter = logging.Formatter(
