@@ -1,0 +1,6 @@
+results
+test_results
+targets
+input
+.*
+*.pyc
