@@ -22,7 +22,7 @@ def get_cmd_from_yaml(file, input_dir):
     return cmd
 
 
-def run_target(target_dir, benchid, input_dir, redis_host_port, session, env_path, dummy_run=False):
+def run_target(target_dir, benchid, input_dir, redis_host_port, session, env_path, extra_args="", dummy_run=False):
     target = os.path.basename(target_dir)
     logger.info('Running target %s' % target)
     session.sendline('cd %s' % target_dir)
@@ -34,6 +34,27 @@ def run_target(target_dir, benchid, input_dir, redis_host_port, session, env_pat
       logger.debug('Executing command on head node.')
       #import ipdb
       #ipdb.set_trace()
-      session.sendline('nohup ' + env_path + '/bin/' + cmd + ' &')
+      session.sendline('nohup ' + env_path + '/bin/' + cmd +' ' + extra_args  + ' &')
       session.prompt()
     logger.info('done!.')
+
+def get_version(path_to_env):
+    import pexpect
+    import re
+    import git
+    r = re.compile('^rosetta-utils \(.+, (.+)\)')
+    session = pexpect.spawn('bash')
+    session.sendline('source ' + path_to_env + '/bin/activate')
+    session.sendline('pip list')
+    line = ''
+    while not r.match(line):
+        if session.eof():
+            break
+        line = session.readline()
+    assert line, 'repo info not found'
+    dev_dir =  r.split(line.strip())[1]
+    repo = git.Repo(dev_dir)
+    branch = repo.active_branch
+    head =  filter(lambda x:x.name == branch.name, repo.heads)[0]
+    commit = head.commit.hexsha
+    return (branch, commit, repo.is_dirty())
