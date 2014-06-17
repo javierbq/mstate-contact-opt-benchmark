@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<ul class="nav nav-tabs nav-justified">
+  <li class="active"><a href="benchmark">latest</a></li>
+  {% for bench in old_benchs %}
+    <li><a href="benchmark/{{bench}}">{{bench}}</a></li>
+  {% endfor %}
+</ul>
+
+{% block bech_info %} {% endblock %}
+
+{% endblock %}

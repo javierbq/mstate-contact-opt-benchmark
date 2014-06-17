@@ -11,7 +11,10 @@ import os
 import pxssh
 from getpass import getuser
 import redis
-from utils import get_cmd_from_yaml, run_target
+from utils import get_cmd_from_yaml, run_target, get_version
+from uuid import uuid4
+
+from settings import DEFAULT_REDIS_HOST_PORT
 
 parser = ArgumentParser()
 
@@ -46,7 +49,7 @@ parser.add_argument(
     '-redis_host_port',
     metavar=' host port',
     nargs=2,
-    default=('havic', 6379),
+    default=DEFAULT_REDIS_HOST_PORT, 
     help='Store progress in a redis server.'
 )
 parser.add_argument(
@@ -64,7 +67,44 @@ parser.add_argument(
     action='store_true',
     help="Reset benchmark counter."
 )
+parser.add_argument(
+    '-n_iter',
+    default=None,
+    type=int,
+    help='Set the numbers of iterations for the targets.'
+)
+parser.add_argument(
+    '-targets',
+    nargs='+',
+    help='run only this targets'
+)
+
+parser.add_argument(
+    '-extra_args',
+    default = "",
+    help='extra args to pass to mstate_contact_opt.py'
+)
+parser.add_argument(
+    '-web',
+    action='store_true',
+    help='Serve results website.'
+)
+
 args = parser.parse_args()
+
+if args.web:
+    from web import main
+    main()
+
+log_id = uuid4().hex
+
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+    datefmt='%m-%d %H:%M',
+    filename='logs/' + log_id,
+    filemode='w'
+)
 
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -79,9 +119,9 @@ ch.setLevel(logging.DEBUG if args.verbose else logging.INFO)
 logger.addHandler(ch)
 logger_utils.addHandler(ch)
 
-redis_server = redis.Redis(host='havic', port=6379)
-
-redis_server.set('slots:' + args.head, args.cpu_slots)
+redis_server =redis. Redis(*args.redis_host_port)
+redis_server.delete('slots:' + args.head)
+redis_server.lpush('slots:' + args.head, *range(args.cpu_slots))
 
 home = os.path.expanduser('~')
 if os.path.exists(os.path.abspath('%s/.virtualenvs/%s' % (home, args.enviroment))):
@@ -94,6 +134,11 @@ else:
     exit(1)
 
 logger.debug("Path to enviroment: " + path_to_enviroment)
+
+branch, commit, is_dirty = get_version(path_to_enviroment)
+assert not is_dirty, 'Repository is dirty! commit before running the benchmark'
+
+logger.info('branch: %s commit: %s' % (branch, commit))
 
 # check branch version and state of the head
 
@@ -108,11 +153,19 @@ if os.path.exists('%s/.bashrc' % home):
 session.sendline('source %s/bin/activate' % path_to_enviroment)
 session.sendline('cd %s' % base_dir)
 session.prompt()
+
+extra_args='' if not args.extra_args else args.extra_args
+if args.n_iter:
+    extra_args + ' -n_iter %d' %  args.n_iter 
+
+if extra_args:
+    logger.info('extra args: %s' % extra_args)
+
 if args.test:
     if args.reset_test_counter:
         redis_server.set('test_counter', 0)
     logger.info('Running test')
-    test_id = 'test_%s' % str(redis_server.incr('test_counter')).zfill(4)
+    test_id = 'test_%s_%s_%s' % (str(redis_server.incr('test_counter')).zfill(4), branch, commit)
     test_time = time.strftime("%Y-%m-%d-%H:%M:%S")
     if redis_server.get('latest_test'):
         redis_server.lpush('old_tests', redis_server.get('latest_test'))
@@ -132,8 +185,8 @@ if args.test:
 else:
     if args.reset_test_counter:
         redis_server.set('bench_counter', 0)
-    bench_id = 'benchmark_%s' % str(
-        redis_server.incr('bench_counter')).zfill(4)
+    bench_id = 'benchmark_%s_%s_%s' % (str(
+        redis_server.incr('bench_counter')).zfill(4), branch, commit )
     if redis_server.get('latest_benchmark'):
         redis_server.lpush('old_benchmarks',
                            redis_server.get('latest_benchmark'))
@@ -151,6 +204,12 @@ else:
     os.symlink(bench_id, 'results/latest')
 
     target_dirs = glob('%s/results/%s/*' % (base_dir, bench_id))
+
+    if args.targets:
+        for t in args.targets:
+            assert t in target_dirs, "target %s doesn't exist" % t
+        target_dirs = args.targets
+
     n_targets = len(target_dirs)
     logger.info('%d targets found' % n_targets)
     c = 1
@@ -167,4 +226,5 @@ else:
         c += 1
 
     # run benchmark
-    logger.info('firing up the jobs')
+    logger.info('All jobs submitted')
+    os.link('logs/' + log_id, bench_dir + '/log.txt')

@@ -1,0 +1,33 @@
+{% extends "main.html" %}
+
+{% block bech_info %} 
+
+<div class="panel panel-default">
+    <!-- Default panel contents -->
+    <div class="panel-heading"> {{bench_data.bench_id}} </div>
+    <div class="panel-body">
+        <p>
+            # targets: {{bench_data.ntargets}}
+        </p>
+
+        <!-- Table -->
+        <table class="table">
+
+            {%for k,v in bench_data.target_data.iteritems()%}
+            <tr>
+                <td>{{k}} </td>
+                <td>  <span class="badge"> {{v.last_iter}} </span> </td>
+                <td>
+                    <div class="progress">
+                        <div class="progress-bar" role="progressbar" aria-valuenow={{v.progress}} aria-valuemin="0" aria-valuemax="100" style="width: {{v.progress}}%;">
+                            {{v.progress}} 
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+
+        </table>
+    </div>
+</div>
+{% endblock bech_info %}
